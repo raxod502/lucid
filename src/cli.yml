@@ -1,0 +1,32 @@
+name: lucid
+author: Radon Rosborough <radon.neon@gmail.com>
+about: Version control with an emphasis on clarity
+subcommands:
+  - status:
+      about: Prints information about changed files
+  - add:
+      about: Adds file changes to the index
+      args:
+        - file:
+            help: File(s) whose changes to add
+            required: true
+            multiple: true
+  - remove:
+      about: Removes file changes from the index
+      args:
+        - file:
+            help: File(s) whose changes to remove
+            required: true
+            multiple: true
+  - commit:
+      about: Commits the index
+  - log:
+      about: Lists commits
+  - reset:
+      about: Moves HEAD to a commit
+      args:
+        - commit:
+            help: Commit to move to
+            required: true
+  - gc:
+      about: Removes unreferenced objects from the database
