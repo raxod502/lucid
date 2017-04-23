@@ -34,7 +34,14 @@ fn repository_directory() -> io::Result<path::PathBuf> {
     loop {
         cwd.push(".lucid");
         if cwd.exists() {
-            return Ok(cwd);
+            if cwd.is_dir() {
+                return Ok(cwd);
+            }
+            else {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("not a directory: {}", cwd.to_string_lossy())));
+            }
         }
         cwd.pop();
         if !cwd.pop() {
