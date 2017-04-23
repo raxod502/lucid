@@ -1,0 +1,6 @@
+[package]
+name = "lucid"
+version = "0.1.0"
+authors = ["Radon Rosborough <radon.neon@gmail.com>"]
+
+[dependencies]
