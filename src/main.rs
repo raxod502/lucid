@@ -18,7 +18,8 @@ fn main() {
     match matches.subcommand() {
         ("status", _) => {
             println!("Checking the status!");
-            repository_directory();
+            println!("The repository directory is: {:?}", repository_directory());
+            println!("The worktree root is: {:?}", worktree_root());
         },
         _ => {
             println!("Sorry, that's not implemented yet.");
@@ -41,6 +42,12 @@ fn repository_directory() -> io::Result<path::PathBuf> {
                                       "no repository"));
         }
     }
+}
+
+fn worktree_root() -> io::Result<path::PathBuf> {
+    let mut path = try!(repository_directory());
+    path.pop();
+    Ok(path)
 }
 
 trait TreeEntry {}
