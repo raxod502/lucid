@@ -5,7 +5,10 @@
 extern crate clap;
 extern crate crypto;
 
+use crypto::digest::Digest;
+use crypto::sha1::Sha1;
 use std::env;
+use std::fmt;
 use std::fs;
 use std::io;
 use std::io::prelude::*;
@@ -17,9 +20,41 @@ fn main() {
     let matches = clap::App::from_yaml(yaml).get_matches();
     match matches.subcommand() {
         ("status", _) => {
-            println!("Checking the status!");
-            println!("The repository directory is: {:?}", repository_directory());
-            println!("The worktree root is: {:?}", worktree_root());
+            let blob = Blob { contents: "Hello, world!\n" };
+            let tree = Tree { entries: vec![
+                TreeEntry { name: "hello.txt",
+                            data:
+                            TreeEntryData::Blob
+                            { blob: &blob,
+                              filetype: FileType::NormalFile }},
+            ]};
+            let commit = Commit { tree: &tree, parent: None };
+            let new_blob = Blob { contents: "Says hello.\n" };
+            let new_tree = Tree { entries: vec![
+                TreeEntry { name: "README.md",
+                            data:
+                            TreeEntryData::Blob
+                            { blob: &blob,
+                              filetype: FileType::NormalFile }},
+                TreeEntry { name: "data",
+                            data:
+                            TreeEntryData::Tree
+                            { tree: &tree }},
+            ]};
+            let new_commit = Commit { tree: &new_tree,
+                                      parent: Some(&commit) };
+            println!("Here is a blob ({}):\n---\n{}---",
+                     blob.to_hash(), blob);
+            println!("Here is a tree ({}):\n---\n{}---",
+                     tree.to_hash(), tree);
+            println!("Here is a commit ({}):\n---\n{}---",
+                     commit.to_hash(), commit);
+            println!("Here is a new blob ({}):\n---\n{}---",
+                     new_blob.to_hash(), new_blob);
+            println!("Here is a new tree ({}):\n---\n{}---",
+                     new_tree.to_hash(), new_tree);
+            println!("Here is a new commit ({}):\n---\n{}---",
+                     new_commit.to_hash(), new_commit);
         },
         _ => {
             println!("Sorry, that's not implemented yet.");
@@ -57,22 +92,84 @@ fn worktree_root() -> io::Result<path::PathBuf> {
     Ok(path)
 }
 
-trait TreeEntry {}
-
-struct Blob {
-    contents: String,
+struct Blob<'a> {
+    contents: &'a str,
 }
 
-struct Tree {
-    entries: Vec<Box<TreeEntry>>,
+struct Tree<'a> {
+    entries: Vec<TreeEntry<'a>>,
 }
 
-impl TreeEntry for Blob {}
-impl TreeEntry for Tree {}
-
-struct Commit {
-    parent: Option<Box<Commit>>,
-    tree: Tree,
+struct TreeEntry<'a> {
+    name: &'a str,
+    data: TreeEntryData<'a>,
 }
 
-trait Object {}
+enum FileType {
+    NormalFile,
+    Executable,
+    SymbolicLink,
+}
+
+enum TreeEntryData<'a> {
+    Blob {
+        blob: &'a Blob<'a>,
+        filetype: FileType,
+    },
+    Tree {
+        tree: &'a Tree<'a>,
+    },
+}
+
+struct Commit<'a> {
+    tree: &'a Tree<'a>,
+    parent: Option<&'a Commit<'a>>,
+}
+
+trait Object : fmt::Display {
+    fn to_hash(&self) -> String {
+        let mut hasher = Sha1::new();
+        hasher.input_str(self.to_string().as_str());
+        hasher.result_str()
+    }
+}
+
+impl<'a> fmt::Display for Blob<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "blob\n{}", self.contents)
+    }
+}
+
+impl<'a> fmt::Display for Tree<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "tree\n"));
+        for entry in &self.entries {
+            try!(write!(f, "{} {} {}\n", match &entry.data {
+                &TreeEntryData::Blob { ref filetype, .. } => match filetype {
+                    &FileType::NormalFile => "file",
+                    &FileType::Executable => "exec",
+                    &FileType::SymbolicLink => "link",
+                },
+                &TreeEntryData::Tree { .. } => "tree",
+            }, match &entry.data {
+                &TreeEntryData::Blob { ref blob, .. } => blob.to_hash(),
+                &TreeEntryData::Tree { ref tree } => tree.to_hash(),
+            }, entry.name));
+        }
+        Ok(())
+    }
+}
+
+impl<'a> fmt::Display for Commit<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "commit\ntree {}\n", self.tree.to_hash()));
+        if let Some(ref parent) = self.parent {
+            try!(write!(f, "parent {}\n", parent.to_hash()));
+        }
+        Ok(())
+    }
+}
+
+impl<'a> Object for Blob<'a> {}
+impl<'a> Object for Tree<'a> {}
+impl<'a> Object for Commit<'a> {}
