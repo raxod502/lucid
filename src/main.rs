@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-#![allow(unused_imports)]
 
 #[macro_use]
 extern crate clap;
@@ -9,9 +8,7 @@ use crypto::digest::Digest;
 use crypto::sha1::Sha1;
 use std::env;
 use std::fmt;
-use std::fs;
 use std::io;
-use std::io::prelude::*;
 use std::path;
 use std::process;
 
